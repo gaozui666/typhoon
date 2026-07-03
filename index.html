@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>极乐气象局台风路径</title>
+    <title>台风路径</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { background: #0a1628; }
@@ -39,7 +39,7 @@
         }
 
         /* ============================================
-           全局半透明斜向水印 - 全屏覆
+           全局半透明斜向水印 - 全屏覆盖
            透明度 0.09
            ============================================ */
         .watermark-container {
@@ -113,7 +113,7 @@
         .watermark:nth-child(44) { top: 90%; left: 75%; }
 
         /* ============================================
-           左上角位置信息
+           左上角位置信息（缩小版）
            ============================================ */
         .location-info {
             position: absolute;
@@ -122,44 +122,52 @@
             z-index: 1001;
             pointer-events: none;
             background: rgba(10, 22, 40, 0.92);
-            padding: 12px 18px;
-            border-radius: 10px;
+            padding: 8px 14px;
+            border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.08);
             box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
-            min-width: 160px;
-            max-width: 300px;
+            min-width: 120px;
+            max-width: 260px;
         }
         .location-info .label {
             color: rgba(255, 255, 255, 0.3);
-            font-size: 10px;
-            letter-spacing: 1px;
+            font-size: 9px;
+            letter-spacing: 0.5px;
             text-transform: uppercase;
             font-family: 'Microsoft YaHei', Arial, sans-serif;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
         .location-info .address {
             color: #ffffff;
-            font-size: 15px;
+            font-size: 13px;
             font-weight: 600;
             font-family: 'Microsoft YaHei', Arial, sans-serif;
-            line-height: 1.4;
+            line-height: 1.3;
         }
         .location-info .loading {
             color: rgba(255, 255, 255, 0.4);
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 400;
         }
         .location-info .road {
-            color: rgba(255, 255, 255, 0.5);
-            font-size: 12px;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 10px;
             font-family: 'Microsoft YaHei', Arial, sans-serif;
-            margin-top: 2px;
+            margin-top: 1px;
         }
         .location-info .detail {
             color: rgba(255, 255, 255, 0.2);
-            font-size: 10px;
+            font-size: 9px;
             font-family: 'Microsoft YaHei', Arial, sans-serif;
-            margin-top: 4px;
+            margin-top: 2px;
+        }
+        .location-info .note {
+            color: rgba(255, 255, 255, 0.15);
+            font-size: 8px;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            margin-top: 2px;
+            border-top: 1px solid rgba(255, 255, 255, 0.04);
+            padding-top: 2px;
         }
     </style>
 </head>
@@ -178,6 +186,7 @@
             </div>
             <div class="road" id="roadDisplay"></div>
             <div class="detail" id="detailDisplay"></div>
+            <div class="note">⚠️ 基于网络IP定位，可能不精确</div>
         </div>
     </div>
 
@@ -211,147 +220,67 @@
         const roadDisplay = document.getElementById('roadDisplay');
         const detailDisplay = document.getElementById('detailDisplay');
 
-        let timeoutId = null;
-        let isTimeout = false;
+        // ============================================
+        // 使用 IP 定位（不需要代理，不需要用户授权）
+        // ⚠️ 注意：此定位基于网络IP地址，非GPS精确定位
+        //    显示的位置可能与实际位置有偏差
+        // ============================================
 
-        function getAddress(lat, lng) {
-            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&accept-language=zh`;
-            return fetch(url, { headers: { 'User-Agent': 'TyphoonLocationApp/1.0' } })
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.display_name) return data;
-                    else throw new Error('无法解析地址');
-                });
-        }
-
-        function getSimpleAddress(lat, lng) {
-            // 降级方案：只显示国家、省、市、区
-            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=12&accept-language=zh`;
-            return fetch(url, { headers: { 'User-Agent': 'TyphoonLocationApp/1.0' } })
-                .then(response => response.json())
-                .then(data => {
-                    if (data && data.display_name) return data;
-                    else throw new Error('无法解析地址');
-                });
-        }
-
-        function formatAddress(data, simple) {
-            const addr = data.address || {};
-            let road = addr.road || addr.pedestrian || addr.path || '';
-            let district = addr.city_district || addr.district || addr.county || '';
-            let city = addr.city || addr.town || addr.municipality || '';
-            let state = addr.state || addr.province || '';
-            let country = addr.country || '';
-            let postcode = addr.postcode || '';
-            let houseNumber = addr.house_number || '';
-            
-            if (!road) road = addr.neighbourhood || addr.suburb || addr.village || '';
-            
-            let parts = [];
-            if (country) parts.push(country);
-            if (state && state !== country) parts.push(state);
-            if (city && city !== state) parts.push(city);
-            if (district && district !== city) parts.push(district);
-            
-            let mainAddress = parts.join(' ');
-            
-            let roadText = '';
-            if (!simple && road) {
-                roadText = road;
-                if (houseNumber) roadText += ' ' + houseNumber + '号';
-                if (roadText && mainAddress.includes(road)) {
-                    roadText = roadText.replace(road, '').trim();
-                }
-            }
-            
-            let detail = `经度 ${data.lon} | 纬度 ${data.lat}`;
-            if (!simple && postcode) detail += ` | 邮编 ${postcode}`;
-            
-            return {
-                main: mainAddress || '未知位置',
-                road: roadText,
-                detail: detail,
-                full: data.display_name || mainAddress
-            };
-        }
-
-        function updateLocation(lat, lng) {
-            isTimeout = false;
-            addressDisplay.innerHTML = '<span class="loading">解析地址中...</span>';
+        function getLocationByIP() {
+            addressDisplay.innerHTML = '<span class="loading">定位中...</span>';
             roadDisplay.textContent = '';
             detailDisplay.textContent = '';
 
-            // 设置10秒超时
-            timeoutId = setTimeout(() => {
-                isTimeout = true;
-                // 超时后改用简化版（国家省市区）
-                getSimpleAddress(lat, lng)
-                    .then(data => {
-                        const formatted = formatAddress(data, true);
-                        addressDisplay.textContent = formatted.main;
-                        roadDisplay.textContent = '📍 已定位 (详细地址超时)';
-                        detailDisplay.textContent = formatted.detail;
-                    })
-                    .catch(() => {
-                        addressDisplay.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-                        roadDisplay.textContent = '📍 已定位 (地址解析失败)';
-                        detailDisplay.textContent = '';
-                    });
-            }, 10000);
-
-            getAddress(lat, lng)
-                .then(data => {
-                    // 如果已经超时，不再覆盖简化版结果
-                    if (isTimeout) return;
-                    clearTimeout(timeoutId);
-                    const formatted = formatAddress(data, false);
-                    addressDisplay.textContent = formatted.main;
-                    if (formatted.road) roadDisplay.textContent = '🛤️ ' + formatted.road;
-                    detailDisplay.textContent = formatted.detail;
-                })
-                .catch(() => {
-                    // 如果已经超时，不再覆盖简化版结果
-                    if (isTimeout) return;
-                    clearTimeout(timeoutId);
-                    // 请求失败也降级
-                    getSimpleAddress(lat, lng)
-                        .then(data => {
-                            const formatted = formatAddress(data, true);
-                            addressDisplay.textContent = formatted.main;
-                            roadDisplay.textContent = '📍 已定位 (详细地址失败)';
-                            detailDisplay.textContent = formatted.detail;
-                        })
-                        .catch(() => {
-                            addressDisplay.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-                            roadDisplay.textContent = '📍 已定位 (地址解析失败)';
-                            detailDisplay.textContent = '';
-                        });
-                });
+            // 使用 ip-api.com 免费接口
+            fetch('http://ip-api.com/json/', {
+                headers: {
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                if (!response.ok) throw new Error('网络请求失败');
+                return response.json();
+            })
+            .then(data => {
+                if (data.status === 'success') {
+                    // 构建地址：国家 省 市 区
+                    let parts = [];
+                    if (data.country) parts.push(data.country);
+                    if (data.regionName) parts.push(data.regionName);
+                    if (data.city) parts.push(data.city);
+                    if (data.district) parts.push(data.district);
+                    
+                    let mainAddress = parts.join(' ') || '未知位置';
+                    addressDisplay.textContent = mainAddress;
+                    
+                    // 显示运营商信息
+                    roadDisplay.textContent = `📡 ${data.isp || '未知运营商'}`;
+                    
+                    // 显示坐标
+                    detailDisplay.textContent = `经度 ${data.lon} | 纬度 ${data.lat}`;
+                } else {
+                    addressDisplay.textContent = '❌ 定位失败';
+                    roadDisplay.textContent = 'IP 接口返回错误';
+                    detailDisplay.textContent = '';
+                }
+            })
+            .catch(error => {
+                console.error('IP 定位请求失败:', error);
+                addressDisplay.textContent = '❌ 定位服务不可用';
+                roadDisplay.textContent = '请检查网络连接';
+                detailDisplay.textContent = '';
+            });
         }
 
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                function(pos) {
-                    updateLocation(pos.coords.latitude, pos.coords.longitude);
-                },
-                function(err) {
-                    let msg = '定位失败';
-                    if (err.code === 1) msg = '❌ 用户拒绝位置权限';
-                    else if (err.code === 2) msg = '❌ 位置服务不可用';
-                    else if (err.code === 3) msg = '❌ 定位请求超时';
-                    addressDisplay.textContent = msg;
-                    roadDisplay.textContent = '请在浏览器中允许位置权限';
-                },
-                { enableHighAccuracy: true, timeout: 10000 }
-            );
-        } else {
-            addressDisplay.textContent = '❌ 浏览器不支持定位';
-        }
+        // 页面加载后自动定位
+        getLocationByIP();
 
-        window.setMyLocation = function(lat, lng) {
-            updateLocation(lat, lng);
+        // 手动刷新定位（在控制台执行 refreshLocation()）
+        window.refreshLocation = function() {
+            getLocationByIP();
         };
-        console.log('💡 手动定位: setMyLocation(纬度, 经度)');
+        console.log('💡 刷新定位: refreshLocation()');
+        console.log('⚠️ 此定位基于网络IP，非GPS精确定位');
     </script>
 </body>
 </html>

@@ -211,6 +211,9 @@
         const roadDisplay = document.getElementById('roadDisplay');
         const detailDisplay = document.getElementById('detailDisplay');
 
+        let timeoutId = null;
+        let isTimeout = false;
+
         function getAddress(lat, lng) {
             const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&accept-language=zh`;
             return fetch(url, { headers: { 'User-Agent': 'TyphoonLocationApp/1.0' } })
@@ -221,7 +224,18 @@
                 });
         }
 
-        function formatAddress(data) {
+        function getSimpleAddress(lat, lng) {
+            // 降级方案：只显示国家、省、市、区
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=12&accept-language=zh`;
+            return fetch(url, { headers: { 'User-Agent': 'TyphoonLocationApp/1.0' } })
+                .then(response => response.json())
+                .then(data => {
+                    if (data && data.display_name) return data;
+                    else throw new Error('无法解析地址');
+                });
+        }
+
+        function formatAddress(data, simple) {
             const addr = data.address || {};
             let road = addr.road || addr.pedestrian || addr.path || '';
             let district = addr.city_district || addr.district || addr.county || '';
@@ -242,17 +256,16 @@
             let mainAddress = parts.join(' ');
             
             let roadText = '';
-            if (road) {
+            if (!simple && road) {
                 roadText = road;
                 if (houseNumber) roadText += ' ' + houseNumber + '号';
-            }
-            
-            if (roadText && mainAddress.includes(road)) {
-                roadText = roadText.replace(road, '').trim();
+                if (roadText && mainAddress.includes(road)) {
+                    roadText = roadText.replace(road, '').trim();
+                }
             }
             
             let detail = `经度 ${data.lon} | 纬度 ${data.lat}`;
-            if (postcode) detail += ` | 邮编 ${postcode}`;
+            if (!simple && postcode) detail += ` | 邮编 ${postcode}`;
             
             return {
                 main: mainAddress || '未知位置',
@@ -263,19 +276,56 @@
         }
 
         function updateLocation(lat, lng) {
+            isTimeout = false;
             addressDisplay.innerHTML = '<span class="loading">解析地址中...</span>';
             roadDisplay.textContent = '';
             detailDisplay.textContent = '';
+
+            // 设置10秒超时
+            timeoutId = setTimeout(() => {
+                isTimeout = true;
+                // 超时后改用简化版（国家省市区）
+                getSimpleAddress(lat, lng)
+                    .then(data => {
+                        const formatted = formatAddress(data, true);
+                        addressDisplay.textContent = formatted.main;
+                        roadDisplay.textContent = '📍 已定位 (详细地址超时)';
+                        detailDisplay.textContent = formatted.detail;
+                    })
+                    .catch(() => {
+                        addressDisplay.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                        roadDisplay.textContent = '📍 已定位 (地址解析失败)';
+                        detailDisplay.textContent = '';
+                    });
+            }, 10000);
+
             getAddress(lat, lng)
                 .then(data => {
-                    const formatted = formatAddress(data);
+                    // 如果已经超时，不再覆盖简化版结果
+                    if (isTimeout) return;
+                    clearTimeout(timeoutId);
+                    const formatted = formatAddress(data, false);
                     addressDisplay.textContent = formatted.main;
                     if (formatted.road) roadDisplay.textContent = '🛤️ ' + formatted.road;
                     detailDisplay.textContent = formatted.detail;
                 })
                 .catch(() => {
-                    addressDisplay.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-                    roadDisplay.textContent = '📍 已定位 (地址解析失败)';
+                    // 如果已经超时，不再覆盖简化版结果
+                    if (isTimeout) return;
+                    clearTimeout(timeoutId);
+                    // 请求失败也降级
+                    getSimpleAddress(lat, lng)
+                        .then(data => {
+                            const formatted = formatAddress(data, true);
+                            addressDisplay.textContent = formatted.main;
+                            roadDisplay.textContent = '📍 已定位 (详细地址失败)';
+                            detailDisplay.textContent = formatted.detail;
+                        })
+                        .catch(() => {
+                            addressDisplay.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                            roadDisplay.textContent = '📍 已定位 (地址解析失败)';
+                            detailDisplay.textContent = '';
+                        });
                 });
         }
 

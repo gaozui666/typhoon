@@ -18,36 +18,109 @@
             border: none;
         }
 
- /* 极集团 */
-.floating-brand {
-    position: absolute;
-    bottom: 4px;
-    left: 7px;
-    z-index: 999;
-    pointer-events: none;
-    font-family: 'Microsoft YaHei', Arial, sans-serif;
-    font-size: 8px;
-    color: rgba(255, 255, 255, 0.8);  /* 只改了这里 0.6 → 0.8 */
-    letter-spacing: 0.5px;
-    backdrop-filter: blur(4px);
-    -webkit-backdrop-filter: blur(4px);
-    padding: 4px 12px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 255, 255, 0.06);
-    line-height: 1.4;
-    white-space: nowrap;
-}
+        /* 极乐集团 */
+        .floating-brand {
+            position: absolute;
+            bottom: 4px;
+            left: 7px;
+            z-index: 1001;
+            pointer-events: none;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            font-size: 8px;
+            color: rgba(255, 255, 255, 0.8);
+            letter-spacing: 0.5px;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            padding: 4px 12px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            line-height: 1.4;
+            white-space: nowrap;
+        }
 
         /* ============================================
-           左上角位置信息 - 不透明背景，文字清晰
+           全局半透明斜向水印 - 全屏覆盖
+           透明度 0.09
+           ============================================ */
+        .watermark-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .watermark {
+            position: absolute;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            color: rgba(255, 255, 255, 0.09);
+            transform: rotate(-25deg);
+            letter-spacing: 4px;
+            white-space: nowrap;
+            user-select: none;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.015);
+        }
+
+        /* 44道水印 - 铺满全屏 */
+        .watermark:nth-child(1) { top: 0%; left: -15%; }
+        .watermark:nth-child(2) { top: 0%; left: 15%; }
+        .watermark:nth-child(3) { top: 0%; left: 45%; }
+        .watermark:nth-child(4) { top: 0%; left: 75%; }
+        .watermark:nth-child(5) { top: 9%; left: -5%; }
+        .watermark:nth-child(6) { top: 9%; left: 35%; }
+        .watermark:nth-child(7) { top: 9%; left: 65%; }
+        .watermark:nth-child(8) { top: 9%; left: 95%; }
+        .watermark:nth-child(9) { top: 18%; left: -15%; }
+        .watermark:nth-child(10) { top: 18%; left: 15%; }
+        .watermark:nth-child(11) { top: 18%; left: 45%; }
+        .watermark:nth-child(12) { top: 18%; left: 75%; }
+        .watermark:nth-child(13) { top: 27%; left: -5%; }
+        .watermark:nth-child(14) { top: 27%; left: 35%; }
+        .watermark:nth-child(15) { top: 27%; left: 65%; }
+        .watermark:nth-child(16) { top: 27%; left: 95%; }
+        .watermark:nth-child(17) { top: 36%; left: -15%; }
+        .watermark:nth-child(18) { top: 36%; left: 15%; }
+        .watermark:nth-child(19) { top: 36%; left: 45%; }
+        .watermark:nth-child(20) { top: 36%; left: 75%; }
+        .watermark:nth-child(21) { top: 45%; left: -5%; }
+        .watermark:nth-child(22) { top: 45%; left: 35%; }
+        .watermark:nth-child(23) { top: 45%; left: 65%; }
+        .watermark:nth-child(24) { top: 45%; left: 95%; }
+        .watermark:nth-child(25) { top: 54%; left: -15%; }
+        .watermark:nth-child(26) { top: 54%; left: 15%; }
+        .watermark:nth-child(27) { top: 54%; left: 45%; }
+        .watermark:nth-child(28) { top: 54%; left: 75%; }
+        .watermark:nth-child(29) { top: 63%; left: -5%; }
+        .watermark:nth-child(30) { top: 63%; left: 35%; }
+        .watermark:nth-child(31) { top: 63%; left: 65%; }
+        .watermark:nth-child(32) { top: 63%; left: 95%; }
+        .watermark:nth-child(33) { top: 72%; left: -15%; }
+        .watermark:nth-child(34) { top: 72%; left: 15%; }
+        .watermark:nth-child(35) { top: 72%; left: 45%; }
+        .watermark:nth-child(36) { top: 72%; left: 75%; }
+        .watermark:nth-child(37) { top: 81%; left: -5%; }
+        .watermark:nth-child(38) { top: 81%; left: 35%; }
+        .watermark:nth-child(39) { top: 81%; left: 65%; }
+        .watermark:nth-child(40) { top: 81%; left: 95%; }
+        .watermark:nth-child(41) { top: 90%; left: -15%; }
+        .watermark:nth-child(42) { top: 90%; left: 15%; }
+        .watermark:nth-child(43) { top: 90%; left: 45%; }
+        .watermark:nth-child(44) { top: 90%; left: 75%; }
+
+        /* ============================================
+           左上角位置信息
            ============================================ */
         .location-info {
             position: absolute;
             top: 20px;
             left: 20px;
-            z-index: 999;
+            z-index: 1001;
             pointer-events: none;
-            /* 不透明背景 */
             background: rgba(10, 22, 40, 0.92);
             padding: 12px 18px;
             border-radius: 10px;
@@ -95,6 +168,9 @@
         <iframe src="https://tf.istrongcloud.com/release/index-gjdw2.html"></iframe>
         <div class="floating-brand">极乐集团</div>
 
+        <!-- 全屏水印 -->
+        <div class="watermark-container" id="watermarkContainer"></div>
+
         <div class="location-info" id="locationInfo">
             <div class="label">📍 当前位置</div>
             <div class="address" id="addressDisplay">
@@ -104,6 +180,31 @@
             <div class="detail" id="detailDisplay"></div>
         </div>
     </div>
+
+    <script>
+        // 用JS生成44道水印
+        const container = document.getElementById('watermarkContainer');
+        const rows = 11;
+        const cols = 4;
+        const total = rows * cols;
+        
+        for (let i = 0; i < total; i++) {
+            const div = document.createElement('div');
+            div.className = 'watermark';
+            div.textContent = '极乐气象局 版权所有';
+            
+            const row = Math.floor(i / cols);
+            const col = i % cols;
+            
+            const topPercent = row * 9;
+            const leftPercent = col * 30 - 5;
+            
+            div.style.top = topPercent + '%';
+            div.style.left = leftPercent + '%';
+            
+            container.appendChild(div);
+        }
+    </script>
 
     <script>
         const addressDisplay = document.getElementById('addressDisplay');
@@ -126,16 +227,39 @@
             let district = addr.city_district || addr.district || addr.county || '';
             let city = addr.city || addr.town || addr.municipality || '';
             let state = addr.state || addr.province || '';
+            let country = addr.country || '';
+            let postcode = addr.postcode || '';
+            let houseNumber = addr.house_number || '';
+            
             if (!road) road = addr.neighbourhood || addr.suburb || addr.village || '';
+            
             let parts = [];
-            if (state) parts.push(state);
+            if (country) parts.push(country);
+            if (state && state !== country) parts.push(state);
             if (city && city !== state) parts.push(city);
             if (district && district !== city) parts.push(district);
+            
             let mainAddress = parts.join(' ');
-            let roadText = road || '';
-            if (roadText && mainAddress.includes(roadText)) roadText = '';
+            
+            let roadText = '';
+            if (road) {
+                roadText = road;
+                if (houseNumber) roadText += ' ' + houseNumber + '号';
+            }
+            
+            if (roadText && mainAddress.includes(road)) {
+                roadText = roadText.replace(road, '').trim();
+            }
+            
             let detail = `经度 ${data.lon} | 纬度 ${data.lat}`;
-            return { main: mainAddress || '未知位置', road: roadText, detail: detail };
+            if (postcode) detail += ` | 邮编 ${postcode}`;
+            
+            return {
+                main: mainAddress || '未知位置',
+                road: roadText,
+                detail: detail,
+                full: data.display_name || mainAddress
+            };
         }
 
         function updateLocation(lat, lng) {

@@ -22,14 +22,13 @@
         .floating-brand {
             position: absolute;
             bottom: 4px;
-            left: 4px;
+            left: 7px;
             z-index: 999;
             pointer-events: none;
             font-family: 'Microsoft YaHei', Arial, sans-serif;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
+            font-size: 8px;
+            color: rgba(255, 255, 255, 0.8);
             letter-spacing: 0.5px;
-            background: rgba(0, 0, 0, 0.5);
             backdrop-filter: blur(4px);
             -webkit-backdrop-filter: blur(4px);
             padding: 4px 12px;
@@ -48,7 +47,6 @@
             left: 20px;
             z-index: 999;
             pointer-events: none;
-            /* 不透明背景 */
             background: rgba(10, 22, 40, 0.92);
             padding: 12px 18px;
             border-radius: 10px;
@@ -127,16 +125,42 @@
             let district = addr.city_district || addr.district || addr.county || '';
             let city = addr.city || addr.town || addr.municipality || '';
             let state = addr.state || addr.province || '';
+            let country = addr.country || '';
+            let postcode = addr.postcode || '';
+            let houseNumber = addr.house_number || '';
+            
             if (!road) road = addr.neighbourhood || addr.suburb || addr.village || '';
+            
+            // 构建更详细的主地址：国家 省 市 区
             let parts = [];
-            if (state) parts.push(state);
+            if (country) parts.push(country);
+            if (state && state !== country) parts.push(state);
             if (city && city !== state) parts.push(city);
             if (district && district !== city) parts.push(district);
+            
             let mainAddress = parts.join(' ');
-            let roadText = road || '';
-            if (roadText && mainAddress.includes(roadText)) roadText = '';
+            
+            // 道路和门牌号单独显示
+            let roadText = '';
+            if (road) {
+                roadText = road;
+                if (houseNumber) roadText += ' ' + houseNumber + '号';
+            }
+            
+            // 如果道路名和主地址重复，去掉重复部分
+            if (roadText && mainAddress.includes(road)) {
+                roadText = roadText.replace(road, '').trim();
+            }
+            
             let detail = `经度 ${data.lon} | 纬度 ${data.lat}`;
-            return { main: mainAddress || '未知位置', road: roadText, detail: detail };
+            if (postcode) detail += ` | 邮编 ${postcode}`;
+            
+            return {
+                main: mainAddress || '未知位置',
+                road: roadText,
+                detail: detail,
+                full: data.display_name || mainAddress
+            };
         }
 
         function updateLocation(lat, lng) {

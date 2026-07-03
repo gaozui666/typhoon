@@ -2,10 +2,10 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>极乐集团台风路径</title>
+    <title>台风路径</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: #0a1628; overflow: hidden; }
+        body { background: #0a1628; }
         .container {
             position: relative;
             width: 100vw;
@@ -39,224 +39,219 @@
             white-space: nowrap;
         }
 
-        /* 左上角定位信息 */
+        /* 左上角位置信息 - 精确到道路 */
         .location-info {
             position: absolute;
             top: 20px;
             left: 20px;
             z-index: 999;
             pointer-events: none;
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            padding: 10px 14px;
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 10px 16px;
             border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.06);
-            color: #4fc3f7;
-            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
             font-family: 'Microsoft YaHei', Arial, sans-serif;
             box-shadow: 0 2px 16px rgba(0, 0, 0, 0.15);
             min-width: 140px;
-        }
-        .location-info .label { color: rgba(255, 255, 255, 0.7); font-size: 12px; }
-        .location-info .city { color: #fff; font-weight: 600; font-size: 14px; }
-        .location-info .coords { color: rgba(255, 255, 255, 0.4); font-size: 10px; }
-
-        /* ============================================
-           地图上的箭头标记
-           通过经纬度转屏幕坐标定位
-           ============================================ */
-        .map-marker {
-            position: absolute;
-            z-index: 998;
-            pointer-events: none;
-            display: none;
-            transform: translate(-50%, -100%);
-            filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
-            font-size: 28px;
-            text-align: center;
+            max-width: 280px;
             transition: all 0.3s ease;
         }
-        .map-marker .arrow-icon {
-            display: block;
-            font-size: 32px;
-            line-height: 1;
-        }
-        .map-marker .pulse {
-            position: absolute;
-            top: 12px;
-            left: 50%;
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: rgba(79, 195, 247, 0.2);
-            transform: translateX(-50%);
-            animation: pulse-ring 1.5s ease-out infinite;
-        }
-        @keyframes pulse-ring {
-            0% { transform: translateX(-50%) scale(0.5); opacity: 1; }
-            100% { transform: translateX(-50%) scale(2); opacity: 0; }
-        }
-        .map-marker .tag {
-            position: absolute;
-            bottom: -24px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(4px);
-            color: #fff;
+        .location-info .label {
+            color: rgba(255, 255, 255, 0.35);
             font-size: 10px;
-            padding: 2px 8px;
-            border-radius: 4px;
-            white-space: nowrap;
-            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+        }
+        .location-info .address {
+            color: #fff;
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+        .location-info .loading {
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 13px;
+            font-weight: 400;
+        }
+        .location-info .detail {
+            color: rgba(255, 255, 255, 0.25);
+            font-size: 10px;
+            margin-top: 2px;
+        }
+        .location-info .road {
+            color: rgba(255, 255, 255, 0.45);
+            font-size: 11px;
+            margin-top: 1px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <iframe id="typhoonFrame" src="https://tf.istrongcloud.com/release/index-gjdw2.html"></iframe>
-
+        <iframe src="https://tf.istrongcloud.com/release/index-gjdw2.html"></iframe>
         <div class="floating-brand">极乐集团</div>
 
         <div class="location-info" id="locationInfo">
             <div class="label">📍 当前位置</div>
-            <div class="city" id="cityName">定位中...</div>
-            <div class="coords" id="coordsDisplay">请允许浏览器定位</div>
-        </div>
-
-        <div class="map-marker" id="mapMarker">
-            <div class="pulse"></div>
-            <span class="arrow-icon">📍</span>
-            <div class="tag">我的位置</div>
+            <div class="address" id="addressDisplay">
+                <span class="loading">定位中...</span>
+            </div>
+            <div class="road" id="roadDisplay"></div>
+            <div class="detail" id="detailDisplay"></div>
         </div>
     </div>
 
     <script>
+        const addressDisplay = document.getElementById('addressDisplay');
+        const roadDisplay = document.getElementById('roadDisplay');
+        const detailDisplay = document.getElementById('detailDisplay');
+
         // ============================================
-        // 方案：经纬度 → 屏幕坐标（近似转换）
-        // 原理：台风地图用的是 Web Mercator 投影（EPSG:3857）
-        // 我们通过计算经纬度在屏幕上的相对位置来定位箭头
+        // 使用浏览器定位 + Nominatim 反向地理编码
+        // 精确到道路
         // ============================================
 
-        let myLat = null;
-        let myLng = null;
+        function getAddress(lat, lng) {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&accept-language=zh`;
 
+            return fetch(url, {
+                headers: {
+                    'User-Agent': 'TyphoonLocationApp/1.0'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data && data.display_name) {
+                    return data;
+                } else {
+                    throw new Error('无法解析地址');
+                }
+            });
+        }
+
+        function formatAddress(data) {
+            const addr = data.address || {};
+            
+            // 道路名
+            let road = addr.road || addr.pedestrian || addr.path || '';
+            
+            // 区/县
+            let district = addr.city_district || addr.district || addr.county || '';
+            
+            // 市
+            let city = addr.city || addr.town || addr.municipality || '';
+            
+            // 省
+            let state = addr.state || addr.province || '';
+            
+            // 国家
+            let country = addr.country || '';
+
+            // 如果道路名没有，尝试用 neighbourhood 或 suburb
+            if (!road) {
+                road = addr.neighbourhood || addr.suburb || addr.village || '';
+            }
+
+            // 构建显示地址：省 市 区 道路
+            let parts = [];
+            if (state) parts.push(state);
+            if (city && city !== state) parts.push(city);
+            if (district && district !== city) parts.push(district);
+            
+            let mainAddress = parts.join(' ');
+            
+            // 如果道路名存在，单独显示在 road 行
+            let roadText = road || '';
+            
+            // 如果道路名和主地址重复，去掉重复部分
+            if (roadText && mainAddress.includes(roadText)) {
+                roadText = '';
+            }
+
+            // 详细坐标
+            let detail = `经度 ${data.lon} | 纬度 ${data.lat}`;
+
+            return {
+                main: mainAddress || '未知位置',
+                road: roadText,
+                detail: detail,
+                full: data.display_name || mainAddress
+            };
+        }
+
+        // ============================================
+        // 定位流程
+        // ============================================
+
+        function updateLocation(lat, lng) {
+            addressDisplay.innerHTML = '<span class="loading">解析地址中...</span>';
+            roadDisplay.textContent = '';
+            detailDisplay.textContent = '';
+
+            getAddress(lat, lng)
+                .then(data => {
+                    const formatted = formatAddress(data);
+                    
+                    // 显示主地址（省 市 区）
+                    addressDisplay.textContent = formatted.main;
+                    
+                    // 显示道路名
+                    if (formatted.road) {
+                        roadDisplay.textContent = '🛤️ ' + formatted.road;
+                    }
+                    
+                    // 显示坐标
+                    detailDisplay.textContent = formatted.detail;
+                })
+                .catch(error => {
+                    console.error('地址解析失败:', error);
+                    // 降级方案：只显示坐标
+                    addressDisplay.textContent = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+                    roadDisplay.textContent = '📍 已定位 (地址解析失败)';
+                    detailDisplay.textContent = '请检查网络后刷新重试';
+                });
+        }
+
+        // ============================================
         // 获取浏览器定位
+        // ============================================
+
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 function(pos) {
-                    myLat = pos.coords.latitude;
-                    myLng = pos.coords.longitude;
-                    document.getElementById('cityName').textContent = '已定位';
-                    document.getElementById('coordsDisplay').textContent = myLat.toFixed(6) + ', ' + myLng.toFixed(6);
-
-                    // 显示箭头并定位
-                    updateMarkerPosition(myLat, myLng);
-                    document.getElementById('mapMarker').style.display = 'block';
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    updateLocation(lat, lng);
                 },
                 function(err) {
                     let msg = '定位失败';
                     if (err.code === 1) msg = '❌ 用户拒绝位置权限';
                     else if (err.code === 2) msg = '❌ 位置服务不可用';
                     else if (err.code === 3) msg = '❌ 定位请求超时';
-                    document.getElementById('cityName').textContent = msg;
-                    document.getElementById('coordsDisplay').textContent = '请允许浏览器定位权限';
+                    addressDisplay.textContent = msg;
+                    roadDisplay.textContent = '请在浏览器中允许位置权限';
+                    detailDisplay.textContent = '或使用 VPN/代理后重试';
                 },
                 { enableHighAccuracy: true, timeout: 10000 }
             );
         } else {
-            document.getElementById('cityName').textContent = '❌ 浏览器不支持定位';
+            addressDisplay.textContent = '❌ 浏览器不支持定位';
+            roadDisplay.textContent = '请使用 Chrome/Edge/Safari';
         }
 
         // ============================================
-        // 经纬度 → 屏幕坐标 转换函数
-        // 基于 Web Mercator 投影
+        // 手动定位（控制台调试用）
         // ============================================
 
-        function latLngToScreen(lat, lng, mapWidth, mapHeight) {
-            // 范围限制（防止溢出）
-            const latClamped = Math.max(-85, Math.min(85, lat));
-            const lngClamped = Math.max(-180, Math.min(180, lng));
-
-            // Web Mercator 投影
-            const x = (lngClamped + 180) / 360;
-            const sinLat = Math.sin(latClamped * Math.PI / 180);
-            const y = 0.5 - (Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI));
-
-            return {
-                x: x * mapWidth,
-                y: y * mapHeight
-            };
-        }
-
-        function updateMarkerPosition(lat, lng) {
-            const container = document.querySelector('.container');
-            const mapWidth = container.clientWidth;
-            const mapHeight = container.clientHeight;
-
-            // 计算屏幕坐标
-            const pos = latLngToScreen(lat, lng, mapWidth, mapHeight);
-
-            const marker = document.getElementById('mapMarker');
-            marker.style.left = pos.x + 'px';
-            marker.style.top = pos.y + 'px';
-            marker.style.display = 'block';
-        }
-
-        // ============================================
-        // 窗口大小变化时重新定位箭头
-        // ============================================
-
-        let resizeTimeout = null;
-        window.addEventListener('resize', function() {
-            if (resizeTimeout) clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(function() {
-                if (myLat !== null && myLng !== null) {
-                    updateMarkerPosition(myLat, myLng);
-                }
-            }, 300);
-        });
-
-        // ============================================
-        // iframe 加载完成后，尝试定位箭头
-        // 由于跨域无法获取 iframe 内部信息，箭头位置基于屏幕计算
-        // 但目标网站的台风地图使用经纬度，我们的转换算法与之匹配
-        // ============================================
-
-        document.getElementById('typhoonFrame').addEventListener('load', function() {
-            if (myLat !== null && myLng !== null) {
-                setTimeout(function() {
-                    updateMarkerPosition(myLat, myLng);
-                }, 500);
-            }
-        });
-
-        // 页面完全加载后也执行一次
-        window.addEventListener('load', function() {
-            if (myLat !== null && myLng !== null) {
-                setTimeout(function() {
-                    updateMarkerPosition(myLat, myLng);
-                }, 1000);
-            }
-        });
-
-        // ============================================
-        // 手动定位（如果自动定位失败，可以手动输入）
-        // 在控制台输入 setMyPosition(30.67, 104.06) 来测试
-        // ============================================
-
-        window.setMyPosition = function(lat, lng) {
-            myLat = lat;
-            myLng = lng;
-            document.getElementById('cityName').textContent = '手动定位';
-            document.getElementById('coordsDisplay').textContent = lat.toFixed(6) + ', ' + lng.toFixed(6);
-            updateMarkerPosition(lat, lng);
-            document.getElementById('mapMarker').style.display = 'block';
+        window.setMyLocation = function(lat, lng) {
+            updateLocation(lat, lng);
         };
 
-        console.log('💡 如果定位失败，可以在控制台执行: setMyPosition(纬度, 经度)');
-        console.log('💡 例如: setMyPosition(30.67, 104.06)');
+        console.log('💡 手动定位: setMyLocation(纬度, 经度)');
+        console.log('💡 例如: setMyLocation(30.67, 104.06)');
     </script>
 </body>
 </html>

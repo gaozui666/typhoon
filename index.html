@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>台风路径</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a1628; }
+        .container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* 悬浮块：极乐集团 */
+        .floating-brand {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            z-index: 999;
+            pointer-events: none;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 0.5px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 4px 12px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            line-height: 1.4;
+            white-space: nowrap;
+        }
+
+        /* 位置箭头 - 移到左上角 */
+        .location-arrow {
+            position: absolute;
+            top: 20px;
+            left: 20px;            /* 从 right 改成 left */
+            z-index: 999;
+            pointer-events: none;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            color: #4fc3f7;
+            font-size: 14px;
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 2px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .location-arrow .arrow { font-size: 20px; }
+        .location-arrow .label { color: rgba(255, 255, 255, 0.7); font-size: 12px; }
+        .location-arrow .city { color: #fff; font-weight: 600; font-size: 14px; }
+        .location-arrow .coords { color: rgba(255, 255, 255, 0.4); font-size: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <iframe src="https://tf.istrongcloud.com/release/index-gjdw2.html"></iframe>
+        <div class="floating-brand">极乐集团</div>
+
+        <div class="location-arrow" id="locationArrow">
+            <span class="arrow">📍</span>
+            <div>
+                <div class="label">当前位置</div>
+                <div class="city" id="cityName">请求定位中...</div>
+                <div class="coords" id="coordsDisplay">请允许浏览器定位</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(pos) {
+                    const lat = pos.coords.latitude;
+                    const lng = pos.coords.longitude;
+                    document.getElementById('cityName').textContent = '已定位';
+                    document.getElementById('coordsDisplay').textContent = lat.toFixed(6) + ', ' + lng.toFixed(6);
+                },
+                function(err) {
+                    let msg = '定位失败';
+                    if (err.code === 1) msg = '❌ 用户拒绝位置权限';
+                    else if (err.code === 2) msg = '❌ 位置服务不可用';
+                    else if (err.code === 3) msg = '❌ 定位请求超时';
+                    document.getElementById('cityName').textContent = msg;
+                    document.getElementById('coordsDisplay').textContent = '请在浏览器中允许位置权限';
+                },
+                { enableHighAccuracy: true, timeout: 10000 }
+            );
+        } else {
+            document.getElementById('cityName').textContent = '❌ 浏览器不支持定位';
+        }
+    </script>
+</body>
+</html>

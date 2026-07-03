@@ -111,64 +111,6 @@
         .watermark:nth-child(42) { top: 90%; left: 15%; }
         .watermark:nth-child(43) { top: 90%; left: 45%; }
         .watermark:nth-child(44) { top: 90%; left: 75%; }
-
-        /* ============================================
-           左上角位置信息（缩小版）
-           ============================================ */
-        .location-info {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            z-index: 1001;
-            pointer-events: none;
-            background: rgba(10, 22, 40, 0.92);
-            padding: 8px 14px;
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
-            min-width: 120px;
-            max-width: 260px;
-        }
-        .location-info .label {
-            color: rgba(255, 255, 255, 0.3);
-            font-size: 9px;
-            letter-spacing: 0.5px;
-            text-transform: uppercase;
-            font-family: 'Microsoft YaHei', Arial, sans-serif;
-            margin-bottom: 1px;
-        }
-        .location-info .address {
-            color: #ffffff;
-            font-size: 13px;
-            font-weight: 600;
-            font-family: 'Microsoft YaHei', Arial, sans-serif;
-            line-height: 1.3;
-        }
-        .location-info .loading {
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 12px;
-            font-weight: 400;
-        }
-        .location-info .road {
-            color: rgba(255, 255, 255, 0.4);
-            font-size: 10px;
-            font-family: 'Microsoft YaHei', Arial, sans-serif;
-            margin-top: 1px;
-        }
-        .location-info .detail {
-            color: rgba(255, 255, 255, 0.2);
-            font-size: 9px;
-            font-family: 'Microsoft YaHei', Arial, sans-serif;
-            margin-top: 2px;
-        }
-        .location-info .note {
-            color: rgba(255, 255, 255, 0.15);
-            font-size: 8px;
-            font-family: 'Microsoft YaHei', Arial, sans-serif;
-            margin-top: 2px;
-            border-top: 1px solid rgba(255, 255, 255, 0.04);
-            padding-top: 2px;
-        }
     </style>
 </head>
 <body>
@@ -178,16 +120,6 @@
 
         <!-- 全屏水印 -->
         <div class="watermark-container" id="watermarkContainer"></div>
-
-        <div class="location-info" id="locationInfo">
-            <div class="label">📍 当前位置</div>
-            <div class="address" id="addressDisplay">
-                <span class="loading">定位中...</span>
-            </div>
-            <div class="road" id="roadDisplay"></div>
-            <div class="detail" id="detailDisplay"></div>
-            <div class="note">⚠️ 基于网络IP定位，可能不精确</div>
-        </div>
     </div>
 
     <script>
@@ -213,74 +145,6 @@
             
             container.appendChild(div);
         }
-    </script>
-
-    <script>
-        const addressDisplay = document.getElementById('addressDisplay');
-        const roadDisplay = document.getElementById('roadDisplay');
-        const detailDisplay = document.getElementById('detailDisplay');
-
-        // ============================================
-        // 使用 IP 定位（不需要代理，不需要用户授权）
-        // ⚠️ 注意：此定位基于网络IP地址，非GPS精确定位
-        //    显示的位置可能与实际位置有偏差
-        // ============================================
-
-        function getLocationByIP() {
-            addressDisplay.innerHTML = '<span class="loading">定位中...</span>';
-            roadDisplay.textContent = '';
-            detailDisplay.textContent = '';
-
-            // 使用 ip-api.com 免费接口
-            fetch('http://ip-api.com/json/', {
-                headers: {
-                    'Accept': 'application/json'
-                }
-            })
-            .then(response => {
-                if (!response.ok) throw new Error('网络请求失败');
-                return response.json();
-            })
-            .then(data => {
-                if (data.status === 'success') {
-                    // 构建地址：国家 省 市 区
-                    let parts = [];
-                    if (data.country) parts.push(data.country);
-                    if (data.regionName) parts.push(data.regionName);
-                    if (data.city) parts.push(data.city);
-                    if (data.district) parts.push(data.district);
-                    
-                    let mainAddress = parts.join(' ') || '未知位置';
-                    addressDisplay.textContent = mainAddress;
-                    
-                    // 显示运营商信息
-                    roadDisplay.textContent = `📡 ${data.isp || '未知运营商'}`;
-                    
-                    // 显示坐标
-                    detailDisplay.textContent = `经度 ${data.lon} | 纬度 ${data.lat}`;
-                } else {
-                    addressDisplay.textContent = '❌ 定位失败';
-                    roadDisplay.textContent = 'IP 接口返回错误';
-                    detailDisplay.textContent = '';
-                }
-            })
-            .catch(error => {
-                console.error('IP 定位请求失败:', error);
-                addressDisplay.textContent = '❌ 定位服务不可用';
-                roadDisplay.textContent = '请检查网络连接';
-                detailDisplay.textContent = '';
-            });
-        }
-
-        // 页面加载后自动定位
-        getLocationByIP();
-
-        // 手动刷新定位（在控制台执行 refreshLocation()）
-        window.refreshLocation = function() {
-            getLocationByIP();
-        };
-        console.log('💡 刷新定位: refreshLocation()');
-        console.log('⚠️ 此定位基于网络IP，非GPS精确定位');
     </script>
 </body>
 </html>
